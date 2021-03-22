@@ -8,9 +8,9 @@ from preprocessing import ModularPreprocessor, PreprocessorModules, Dataset
 from preprocessing.audio.STFT import STFTBackend
 
 def main():
-    #pipeline = [PreprocessorModules.SPLEETER]
-    #preprocessor = ModularPreprocessor('/data', Dataset.FMA_SMALL, STFTBackend.LIBROSA_CPU, pipeline, chunk_size=100)
-    #preprocessor.run()
+    # pipeline = [PreprocessorModules.SPLEETER]
+    # preprocessor = ModularPreprocessor('/datashare_small/osterburg_data', Dataset.FMA_SMALL, STFTBackend.LIBROSA_CPU, pipeline, chunk_size=100)
+    # preprocessor.run()
 
     model = ParallelCRNN()
     model.train()

@@ -21,7 +21,7 @@ class FmaSmallLoader(AbstractDatasetLoader):
         genres_dict = {}
         genres = df[("track", "genre_top")].dropna().unique()
         for label in genres:
-            genres_dict.update({label: len(genres_dict)})
+            genres_dict.update({ label: len(genres_dict) })
         
         # Swap dict keys and values and save
         genres_dict_swapped = dict([(value, key) for key, value in genres_dict.items()]) 
