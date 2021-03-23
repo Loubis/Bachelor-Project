@@ -15,11 +15,18 @@ class FileLoader():
         collection = []
         for (_, file, label) in tqdm(df.itertuples(), total=df.shape[0], desc='Loading Files'):
             try:
+                # TODO Parameter
                 audio = self._audio_loader.load(file, sample_rate=44100, duration=30.0)
                 if audio[0].shape[1] == 1:
-                    data = [ label , [np.repeat(a=audio[0], repeats=2, axis=1)] ]
+                    data = [ label , [np.pad(
+                        np.repeat(a=audio[0], repeats=2, axis=1),
+                        ((0, 30*44100 - audio[0].shape[0]), (0,0))
+                    )]]
                 else:  
-                    data = [ label , [audio[0]] ]
+                    data = [ label , [np.pad(
+                        audio[0],
+                        ((0, 30*44100 - audio[0].shape[0]), (0,0) )
+                    )]]
                 collection.append(data)
             except Exception as e :
                 print(e)
