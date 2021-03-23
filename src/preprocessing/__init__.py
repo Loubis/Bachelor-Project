@@ -68,7 +68,7 @@ class ModularPreprocessor():
         )
 
         for (key, df) in split.items():
-            print('Splitting %s dataset into chunks ...', key)
+            print(f'Splitting {key} dataset into chunks ...')
             chunks = np.array_split(df, math.ceil(df.shape[0] / self._chunk_size))
 
             for index, chunk in enumerate(chunks):
@@ -89,8 +89,8 @@ class ModularPreprocessor():
                     if audio.shape == (5,128,1290):
                         audio_data.append(audio)
                         labels.append(file[0])
-                
+
                 np.savez(self._dataset.destination + '/arr_' + key + '_' + str(index), np.array(audio_data), np.array(labels))
                 gc.collect()
-            print('Finished %s dataset', key)
+            print(f'Finished {key} dataset')
         print('Finished preprocessing')
