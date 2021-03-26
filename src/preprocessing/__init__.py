@@ -80,15 +80,13 @@ class ModularPreprocessor():
 
                 data = self._stft.convert(data)
 
-                print('Saving chunk ' + str(index))
+                print(f'Saving {key} chunk {index}')
                 audio_data = []
                 labels = []
                 for file in data:
-                    
                     audio = np.array(file[1])
-                    if audio.shape == (5,128,1290):
-                        audio_data.append(audio)
-                        labels.append(file[0])
+                    audio_data.append(audio)
+                    labels.append(file[0])
 
                 np.savez(self._dataset.destination + '/arr_' + key + '_' + str(index), np.array(audio_data), np.array(labels))
                 gc.collect()

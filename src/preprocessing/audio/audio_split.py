@@ -1,3 +1,4 @@
+from typing import NoReturn
 from .audio_processor import AbstractAudioPreprocessor
 
 import numpy as np
@@ -13,7 +14,7 @@ class AudioSplit(AbstractAudioPreprocessor):
     def process(self,data):
         new_data = list()
         for file in data:
-           new_data.extend([ { 'label': file['label'], 'audio': { 'original': split } } for split in np.split(file['audio']['original'], self._number_of_splits) ])
+            new_data.extend([ [file[0], [split]] for split in np.split(file[1][0], self._number_of_splits)])
         return new_data
 
 

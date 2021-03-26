@@ -47,9 +47,6 @@ class ParallelCRNN(AbstractModel):
         os.makedirs(f'./logs/{self._log_time}')
 
 
-
-
-
     def train(self):
         x_train, y_train, x_valid, y_valid = [], [], [], []
         
@@ -58,17 +55,26 @@ class ParallelCRNN(AbstractModel):
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
 
-        x_train = np.concatenate(x_train, axis=0)
-        y_train = np.concatenate(y_train, axis=0)
+        train_dataset = tf.data.Dataset.from_tensor_slices(
+            (
+                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(np.concatenate(x_train, axis=0), axis=-1), 5 , axis=1) ],
+                np.concatenate(y_train, axis=0)
+            )
+        )
+        print(train_dataset)
+        exit()
 
-        
         for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_validate_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
 
-        x_valid = np.concatenate(x_valid, axis=0)
-        y_valid = np.concatenate(y_valid, axis=0)
+        valid_dataset = tf.Data.Dataset.from_tensor_slices(
+            (
+                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(np.concatenate(x_valid, axis=0), axis=-1), 5 , axis=1) ],
+                np.concatenate(y_valid, axis=0)
+            )
+        )
 
         tb_callback = TensorBoard(
             log_dir = f'./logs/{self._log_time}/tensorboard',
@@ -96,14 +102,10 @@ class ParallelCRNN(AbstractModel):
         callbacks_list = [reducelr_callback, checkpoint_callback, tb_callback]
         print('Training...')
         self._model.fit(
-            [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), 5 , axis=1) ],
-            y_train,
+            train_dataset,
             batch_size=self._batch_size,
             epochs=self._epoch_count,
-            validation_data=(
-                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), 5 , axis=1) ],
-                y_valid
-            ),
+            validation_data=valid_dataset,
             verbose=1,
             callbacks=callbacks_list,
         )
@@ -215,7 +217,7 @@ class ParallelCRNN(AbstractModel):
         Sub_Net_Outputs = []
 
         for _ in range(0,5):            
-            Input_Layer = Input((128, 1290, 1))
+            Input_Layer = Input((128, 130, 1))
             Input_List.append(Input_Layer)
             #Sub_Net_Outputs.append(self._create_cnn_block(Input_Layer)) 
             #Sub_Net_Outputs.append(self._create_birnn_block(Input_Layer))
