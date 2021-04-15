@@ -3,6 +3,7 @@ import warnings
 import os
 import argparse
 from model.parallel_crnn import ParallelCRNN
+from model.simple_cnn import SimpleCNN
 
 from preprocessing import ModularPreprocessor, PreprocessorModules, Dataset
 from preprocessing.audio.STFT import STFTBackend
@@ -12,7 +13,7 @@ def main():
     #preprocessor = ModularPreprocessor('/data', Dataset.GTZAN, STFTBackend.LIBROSA_CPU, pipeline, chunk_size=100)
     #preprocessor.run()
 
-    model = ParallelCRNN()
+    model = SimpleCNN()
     model.train()
     model.evaluate()
 

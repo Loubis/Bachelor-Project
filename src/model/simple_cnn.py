@@ -41,7 +41,7 @@ class SimpleCNN(AbstractModel):
 
     def compile_model(self):
         print('Creating model...')
-        encoded_labels = np.load('/data/processed/gtzan/encoded_labels.npy')
+        encoded_labels = np.load('/datashare_small/osterburg_data/processed/fma_small/encoded_labels.npy')
         Input_List = []
         Sub_Net_Outputs = []
 
@@ -51,6 +51,7 @@ class SimpleCNN(AbstractModel):
             Sub_Net_Outputs.append(self._create_cnn_block(Input_Layer)) 
 
         Network = concatenate(Sub_Net_Outputs, axis=-1)
+        Network = Dropout(0.2)(Network)
         Output_Layer = Dense(encoded_labels.shape[0], activation='softmax')(Network)
 
         model = Model(Input_List, Output_Layer)
@@ -69,22 +70,10 @@ class SimpleCNN(AbstractModel):
 
     def _create_cnn_block(self, Input_Layer):
         Network = Conv2D(
-            filters=8,
-            kernel_size=[3,3],
-            padding='same'
-        )(Input)
-        Network = BatchNormalization()(Network)
-        Network = Activation('relu')(Network)
-        Network = MaxPool2D(
-            pool_size=(2, 2),
-            strides=(2, 2)
-        )(Network)
-
-        Network = Conv2D(
             filters=16,
             kernel_size=[3,3],
             padding='same'
-        )(Input)
+        )(Input_Layer)
         Network = BatchNormalization()(Network)
         Network = Activation('relu')(Network)
         Network = MaxPool2D(
@@ -96,7 +85,7 @@ class SimpleCNN(AbstractModel):
             filters=32,
             kernel_size=[3,3],
             padding='same'
-        )(Input)
+        )(Network)
         Network = BatchNormalization()(Network)
         Network = Activation('relu')(Network)
         Network = MaxPool2D(
@@ -105,10 +94,10 @@ class SimpleCNN(AbstractModel):
         )(Network)
 
         Network = Conv2D(
-            filters=64,
+            filters=34,
             kernel_size=[3,3],
             padding='same'
-        )(Input)
+        )(Network)
         Network = BatchNormalization()(Network)
         Network = Activation('relu')(Network)
         Network = MaxPool2D(
@@ -120,25 +109,35 @@ class SimpleCNN(AbstractModel):
             filters=128,
             kernel_size=[3,3],
             padding='same'
-        )(Input)
+        )(Network)
         Network = BatchNormalization()(Network)
         Network = Activation('relu')(Network)
         Network = MaxPool2D(
-            pool_size=(2, 2),
-            strides=(2, 2)
+            pool_size=(4, 4),
+            strides=(4, 4)
+        )(Network)
+
+        Network = Conv2D(
+            filters=64,
+            kernel_size=[3,3],
+            padding='same'
+        )(Network)
+        Network = BatchNormalization()(Network)
+        Network = Activation('relu')(Network)
+        Network = MaxPool2D(
+            pool_size=(4, 4),
+            strides=(4, 4)
         )(Network)
 
         Network = Flatten()(Network)
-        Network = Dropout(0.2)(Network)
 
         return Network
-
 
 
     def train(self):
         x_train, y_train, x_valid, y_valid = [], [], [], []
         
-        for np_name in tqdm(glob('/data/processed/gtzan/arr_train_*.npz'), ncols=100):
+        for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_train_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
@@ -147,7 +146,7 @@ class SimpleCNN(AbstractModel):
         y_train = np.concatenate(y_train, axis=0)
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
 
-        for np_name in tqdm(glob('/data/processed/gtzan/arr_validate_*.npz'), ncols=100):
+        for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_validate_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
@@ -201,7 +200,7 @@ class SimpleCNN(AbstractModel):
     def evaluate(self):
         x_test, y_test = [], []
 
-        for np_name in tqdm(glob('//data/processed/gtzan/arr_test_*.npz'), ncols=100):
+        for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_test_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_test.append(npzfile['arr_0'])
             y_test.append(npzfile['arr_1'])
