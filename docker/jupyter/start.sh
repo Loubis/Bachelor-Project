@@ -1,0 +1,1 @@
+sudo docker run --gpus 1 -it -p 8888:8888 --rm -v $PWD:/tf -w /tf -v /home/steffen/Datasets:/data techisland/tensorflow-gpu-jupyter:v1

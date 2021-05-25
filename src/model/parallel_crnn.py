@@ -33,9 +33,10 @@ from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnP
 
 class ParallelCRNN(AbstractModel):
 
-    def __init__(self):
+    def __init__(self, dataset_path):
+        self._dataset_path = dataset_path
         self._model = self._create_parallel_cnn_birnn_model()
-        self._batch_size = 64
+        self._batch_size = 16
         self._epoch_count = 70
         self._log_time = datetime.now().strftime('%d-%m-%Y-%H-%M-%S')
         if not os.path.exists('./logs'):
@@ -46,19 +47,25 @@ class ParallelCRNN(AbstractModel):
     def train(self):
         x_train, y_train, x_valid, y_valid = [], [], [], []
         
-        for np_name in tqdm(glob('/data/processed/gtzan/arr_train_*.npz'), ncols=100):
+        for np_name in tqdm(glob(f'{self._dataset_path}arr_train_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
+        
+        print(x_train[0].shape)
+        print(y_train[0].shape)
 
         x_train = np.concatenate(x_train, axis=0)
         y_train = np.concatenate(y_train, axis=0)
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
 
-        for np_name in tqdm(glob('/data/processed/gtzan/arr_validate_*.npz'), ncols=100):
+        for np_name in tqdm(glob(f'{self._dataset_path}arr_validate_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
+
+        print(x_valid[0].shape)
+        print(y_valid[0].shape)
 
         x_valid = np.concatenate(x_valid, axis=0)
         y_valid = np.concatenate(y_valid, axis=0)
@@ -87,15 +94,18 @@ class ParallelCRNN(AbstractModel):
             monitor='val_accuracy', factor=0.5, patience=10, min_delta=0.01, verbose=1
         )
 
+        print("Train", [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), 3 , axis=1) ])
+        print("Test" ,[ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), 3 , axis=1) ])
+
         callbacks_list = [reducelr_callback, checkpoint_callback, tb_callback]
         print('Training...')
         self._model.fit(
-            [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), 5 , axis=1) ],
+            [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), 3 , axis=1) ],
             y_train,
             batch_size=self._batch_size,
             epochs=self._epoch_count,
             validation_data=( 
-                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), 5 , axis=1) ],
+                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), 3 , axis=1) ],
                 y_valid
             ),
             verbose=1,
@@ -109,7 +119,7 @@ class ParallelCRNN(AbstractModel):
     def evaluate(self):
         x_test, y_test = [], []
 
-        for np_name in tqdm(glob('//data/processed/gtzan/arr_test_*.npz'), ncols=100):
+        for np_name in tqdm(glob(f'{self._dataset_path}arr_test_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_test.append(npzfile['arr_0'])
             y_test.append(npzfile['arr_1'])
@@ -117,7 +127,7 @@ class ParallelCRNN(AbstractModel):
         x_test = np.concatenate(x_test, axis=0)
         y_test = np.concatenate(y_test, axis=0)
 	    
-        score = self._model.evaluate([ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_test, axis=-1), 5 , axis=1) ], y_test)
+        score = self._model.evaluate([ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_test, axis=-1), 3 , axis=1) ], y_test)
         
         file = open(f'./logs/{self._log_time}/evaluation.log', 'w')
         file.write(f'Test loss: {score[0]} / Test accuracy: {score[1]}')
@@ -204,18 +214,20 @@ class ParallelCRNN(AbstractModel):
 
 
     def _create_parallel_cnn_birnn_model(self):
+
         print('Creating model...')
         Input_List = []
         Sub_Net_Outputs = []
 
-        for _ in range(0,5):            
-            Input_Layer = Input((128, 130, 1))
+    
+        for _ in range(0, 3):            
+            Input_Layer = Input((128, 1290, 1))
             Input_List.append(Input_Layer)
             Sub_Net_Outputs.append(self._create_cnn_block(Input_Layer)) 
             Sub_Net_Outputs.append(self._create_birnn_block(Input_Layer))
             #Sub_Net_Outputs.append(self._create_classification_block(self._create_cnn_block(Input_Layer), self._create_birnn_block(Input_Layer)))
 
-        encoded_labels = np.load('/data/processed/gtzan/encoded_labels.npy')
+        encoded_labels = np.load(f'{self._dataset_path}encoded_labels.npy')
 
         Final_Classification_Block = concatenate(Sub_Net_Outputs, axis=-1)
         Final_Classification_Block = Dropout(0.5)(Final_Classification_Block)

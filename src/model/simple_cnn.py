@@ -29,7 +29,8 @@ from tensorflow.keras.regularizers import l2
 
 class SimpleCNN(AbstractModel):
 
-    def __init__(self):
+    def __init__(self, dataset_path):
+        self._dataset_path = dataset_path
         self._model = self.compile_model()
         self._batch_size = 64
         self._epoch_count = 70
@@ -41,7 +42,7 @@ class SimpleCNN(AbstractModel):
 
     def compile_model(self):
         print('Creating model...')
-        encoded_labels = np.load('/datashare_small/osterburg_data/processed/fma_small/encoded_labels.npy')
+        encoded_labels = np.load(f'{self._dataset_path}encoded_labels.npy')
         Input_List = []
         Sub_Net_Outputs = []
 
@@ -94,7 +95,7 @@ class SimpleCNN(AbstractModel):
         )(Network)
 
         Network = Conv2D(
-            filters=34,
+            filters=64,
             kernel_size=[3,3],
             padding='same'
         )(Network)
@@ -137,7 +138,7 @@ class SimpleCNN(AbstractModel):
     def train(self):
         x_train, y_train, x_valid, y_valid = [], [], [], []
         
-        for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_train_*.npz'), ncols=100):
+        for np_name in tqdm(glob(f'{self._dataset_path}arr_train_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
@@ -146,7 +147,7 @@ class SimpleCNN(AbstractModel):
         y_train = np.concatenate(y_train, axis=0)
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
 
-        for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_validate_*.npz'), ncols=100):
+        for np_name in tqdm(glob(f'{self._dataset_path}arr_train_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
@@ -200,7 +201,7 @@ class SimpleCNN(AbstractModel):
     def evaluate(self):
         x_test, y_test = [], []
 
-        for np_name in tqdm(glob('/datashare_small/osterburg_data/processed/fma_small/arr_test_*.npz'), ncols=100):
+        for np_name in tqdm(glob(f'{self._dataset_path}arr_test_*.npz'), ncols=100):
             npzfile = np.load(np_name)
             x_test.append(npzfile['arr_0'])
             y_test.append(npzfile['arr_1'])

@@ -31,9 +31,6 @@ class Dataset(Enum):
     FMA_SMALL: str = 'FmaSmallLoader'
     FMA_LARGE: str = 'FmaLargeLoader'
     FMA_FULL: str  = 'FmaFullLoader'
-#    BALLROM = 'ballroom'
-#    MILLIONSONG = 'millionsong'
-
 
 
 class PreprocessorModules(Enum):
@@ -64,7 +61,7 @@ class ModularPreprocessor():
         split = {}
         split['train'], split['validate'], split['test'] = np.split(
             df.sample(frac=1).reset_index(drop=True), 
-            [int(.6*len(df)), int(.8*len(df))]
+            [int(0.6*len(df)), int(0.8*len(df))]
         )
 
         for (key, df) in split.items():

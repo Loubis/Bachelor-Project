@@ -18,7 +18,7 @@ class SeperationModel(Enum):
 
 class SpleeterPreprocessor(AbstractAudioPreprocessor):
 
-    def __init__(self, seperation_model=SeperationModel.MODEL_4_STEMS.value):
+    def __init__(self, seperation_model=SeperationModel.MODEL_2_STEMS.value):
         self._seperator = Separator(seperation_model, STFTBackend.TENSORFLOW, multiprocess=False)
 
     def process(self, data):
