@@ -6,13 +6,13 @@ from model.parallel_crnn import ParallelCRNN
 from model.simple_cnn import SimpleCNN
 from model.resnet50 import ResNet50V2
 
-from preprocessing import ModularPreprocessor, PreprocessorModules, Dataset
-from preprocessing.audio.STFT import STFTBackend
+from preprocessing import ModularPreprocessor, PreprocessorModule, Dataset, SourceSeperationModule, STFTBackend
+
 
 def main():
-    #pipeline = [PreprocessorModules.SPLEETER]
-    #preprocessor = ModularPreprocessor('/data', Dataset.GTZAN, STFTBackend.LIBROSA_CPU, pipeline, chunk_size=100)
-    #preprocessor.run()
+    pipeline = []
+    preprocessor = ModularPreprocessor('/data/raw', Dataset.GTZAN, pipeline, SourceSeperationModule.SPLEETER_GPU, True, STFTBackend.LIBROSA_CPU, chunk_size=100)
+    preprocessor.run()
 
     model = ParallelCRNN('/data/processed/gtzan/')
     model.train()
@@ -21,4 +21,3 @@ def main():
 
 if __name__ == "__main__":
     main()
- 

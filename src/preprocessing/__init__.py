@@ -1,5 +1,6 @@
 from typing import List
 from enum import Enum
+from pandas.io.parsers import PythonParser
 from tqdm import tqdm
 
 import numpy as np
@@ -16,14 +17,22 @@ from .dataloader.fma_large_loader import FmaLargeLoader
 from .dataloader.fma_full_loader import FmaFullLoader
 
 from .audio.audio_processor import AbstractAudioPreprocessor
-from .audio.spleeter_processor import SpleeterPreprocessor
-from .audio.audio_split import AudioSplit, AudioSplit_in_3, AudioSplit_in_6, AudioSplit_in_10
 
-from .audio.STFT import STFTBackend, STFT
+from .audio.spleeter_processor import SpleeterCPUPreprocessor
+from .audio.spleeter_processor import SpleeterGPUPreprocessor
+
+from .audio.audio_split import AudioSplit_in_3, AudioSplit_in_6, AudioSplit_in_10
+
+from .audio.STFT import LibrosaCPUSTFT
 
 
 def create_class_instance(classname: str):
     return globals()[classname]
+
+
+class STFTBackend(Enum):
+    LIBROSA_CPU: str = 'LibrosaCPUSTFT'
+    TENSORFLOW_GPU: str = 'TensorflowGPUSTFT'
 
 
 class Dataset(Enum):
@@ -33,24 +42,39 @@ class Dataset(Enum):
     FMA_FULL: str  = 'FmaFullLoader'
 
 
-class PreprocessorModules(Enum):
-    SPLEETER: str    = 'SpleeterPreprocessor'
+class PreprocessorModule(Enum):
     SPLIT_IN_3: str  = 'AudioSplit_in_3'
     SPLIT_IN_6: str  = 'AudioSplit_in_6'
     SPLIT_IN_10: str = 'AudioSplit_in_10'
 
 
+class SourceSeperationModule(Enum):
+    SPLEETER_CPU: str = 'SpleeterCPUPreprocessor'
+    SPLEETER_GPU: str = 'SpleeterGPUPreprocessor'
+    NUSSL: str = 'NusslPreprocessor'
+    OFF: bool = False
+
 
 class ModularPreprocessor():
 
-    def __init__(self, dataset_path: str, dataset: Dataset, stft_backend: STFTBackend, preprocessor_pipeline: List[PreprocessorModules], chunk_size = 2) -> None:
+    def __init__(
+        self, 
+        dataset_path: str, dataset: Dataset, 
+        preprocessor_pipeline: List[PreprocessorModule], 
+        source_seperation_module: SourceSeperationModule, keep_origional = True,
+        stft_backend = STFTBackend,
+        chunk_size = 100
+    ):
         self._dataset: AbstractDatasetLoader = create_class_instance(dataset.value)(dataset_path)
+        self._chunk_size = chunk_size
         self._file_loader = FileLoader()
+
         self._preprocessor_pipeline: List[AbstractAudioPreprocessor] = []
         for processor in preprocessor_pipeline:
             self._preprocessor_pipeline.append(create_class_instance(processor.value)())
-        self._stft = STFT(stft_backend)
-        self._chunk_size = chunk_size
+
+        self._source_seperation_module = create_class_instance(source_seperation_module.value)(keep_origional)
+        self._stft = create_class_instance(stft_backend.value)()
 
 
     def run(self):
@@ -67,14 +91,19 @@ class ModularPreprocessor():
         for (key, df) in split.items():
             print(f'Splitting {key} dataset into chunks ...')
             chunks = np.array_split(df, math.ceil(df.shape[0] / self._chunk_size))
-
+ 
             for index, chunk in enumerate(chunks):
-                print('Processing Chunk ' + str(index))
+                print(f'Processing Chunk {str(index)}')
                 data = self._file_loader.load(chunk)
 
+                print('Processing pipeline')
                 for preprocessor in self._preprocessor_pipeline:
                     data = preprocessor.process(data)
 
+                print('Processing source seperation')
+                data = self._source_seperation_module.process(data)
+
+                print('Converting to spectrogram')
                 data = self._stft.convert(data)
 
                 print(f'Saving {key} chunk {index}')
@@ -84,8 +113,8 @@ class ModularPreprocessor():
                     audio = np.array(file[1])
                     audio_data.append(audio)
                     labels.append(file[0])
-
-                np.savez(self._dataset.destination + '/arr_' + key + '_' + str(index), np.array(audio_data), np.array(labels))
+                np.savez(f'{self._dataset.destination}/arr_{key}_{str(index)}', np.array(audio_data), np.array(labels))
                 gc.collect()
+
             print(f'Finished {key} dataset')
         print('Finished preprocessing')

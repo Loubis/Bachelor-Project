@@ -4,4 +4,4 @@ RUN apt-get update && apt-get -y install ffmpeg graphviz
 
 RUN pip install --upgrade pip
 
-RUN pip install spleeter tqdm pydot
+RUN pip install IPython spleeter nussl tqdm pydot 

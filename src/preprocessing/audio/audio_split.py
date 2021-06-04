@@ -18,19 +18,19 @@ class AudioSplit(AbstractAudioPreprocessor):
         return new_data
 
 
-
 class AudioSplit_in_3(AudioSplit):
+
     def __init__(self):
         super().__init__(3)
 
 
-
 class AudioSplit_in_6(AudioSplit):
+
     def __init__(self):
         super().__init__(6)
 
 
-
 class AudioSplit_in_10(AudioSplit):
+    
     def __init__(self):
         super().__init__(10)

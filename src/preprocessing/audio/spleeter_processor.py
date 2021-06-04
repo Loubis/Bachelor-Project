@@ -18,17 +18,34 @@ class SeperationModel(Enum):
 
 class SpleeterPreprocessor(AbstractAudioPreprocessor):
 
-    def __init__(self, seperation_model=SeperationModel.MODEL_2_STEMS.value):
-        self._seperator = Separator(seperation_model, STFTBackend.TENSORFLOW, multiprocess=False)
+    def __init__(self, stft_backend: STFTBackend, keep_original = True, seperation_model=SeperationModel.MODEL_2_STEMS.value):
+        self._keep_original = keep_original
+        self._seperator = Separator(seperation_model, stft_backend, multiprocess=True)
+
 
     def process(self, data):
         for index, file in enumerate(tqdm(data, desc='Splitting Files')):
             waveform = file[1][0]
             try:
                 prediction = self._seperator.separate(waveform, "")
-                data[index][1].extend(prediction.values())
+                if self._keep_original:
+                    data[index][1].extend(prediction.values())
+                else:
+                    data[index][1] = prediction.values()
             except KeyboardInterrupt:
                 exit(1)
             except Exception as e:
                 print(e)
         return data
+
+
+class SpleeterCPUPreprocessor(SpleeterPreprocessor):
+
+    def __init__(self, keep_original, seperation_model=SeperationModel.MODEL_2_STEMS.value):
+        super().__init__(STFTBackend.LIBROSA, keep_original, seperation_model)
+
+
+class SpleeterGPUPreprocessor(SpleeterPreprocessor):
+
+    def __init__(self, keep_original, seperation_model=SeperationModel.MODEL_2_STEMS.value):
+        super().__init__(STFTBackend.TENSORFLOW, keep_original, seperation_model)

@@ -10,7 +10,6 @@ class GtzanLoader(AbstractDatasetLoader):
             self._os.makedirs(self.destination)
         self._PATH = self._os.path.join(base_path, 'gtzan')
         self._DATA_SET = self._os.path.join(self._PATH, 'genres_original')
-        self._META_DATA_3_SEC = self._os.path.join(self._PATH, 'features_3_sec.csv')
         self._META_DATA_30_SEC = self._os.path.join(self._PATH, 'features_30_sec.csv')
 
     

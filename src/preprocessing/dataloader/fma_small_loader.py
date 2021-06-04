@@ -8,7 +8,7 @@ class FmaSmallLoader(AbstractDatasetLoader):
         if not self._os.path.exists(self.destination):
             self._os.makedirs(self.destination)
 
-        self._PATH = self._os.path.join(base_path, 'fma')
+        self._PATH = self._os.path.join(base_path, 'raw' ,'fma')
         self._DATA_SET = self._os.path.join(self._PATH, 'fma_small')
         self._META_DATA = self._os.path.join(self._PATH, 'fma_metadata', 'tracks.csv')
 
