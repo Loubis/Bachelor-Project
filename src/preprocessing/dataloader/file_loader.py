@@ -11,9 +11,10 @@ class FileLoader():
     def __init__(self) -> None:
         self._audio_loader = AudioAdapter.default()
 
+
     def load(self, df):
         collection = []
-        for (_, file, label) in tqdm(df.itertuples(), total=df.shape[0], desc='Loading Files'):
+        for (_, file, label) in tqdm(df.itertuples(), total=df.shape[0]):
             try:
                 # TODO Parameter
                 audio = self._audio_loader.load(file, sample_rate=44100, duration=30.0)

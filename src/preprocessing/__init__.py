@@ -3,10 +3,12 @@ from enum import Enum
 from pandas.io.parsers import PythonParser
 from tqdm import tqdm
 
+
 import numpy as np
 import pandas as pd
 import math
 import gc
+import json
 
 # TODO: fixing import
 from .dataloader.dataset_loader import AbstractDatasetLoader
@@ -61,7 +63,7 @@ class ModularPreprocessor():
         self, 
         dataset_path: str, dataset: Dataset, 
         preprocessor_pipeline: List[PreprocessorModule], 
-        source_seperation_module: SourceSeperationModule, keep_origional = True,
+        source_seperation_module: SourceSeperationModule, keep_original = True,
         stft_backend = STFTBackend,
         chunk_size = 100
     ):
@@ -72,14 +74,18 @@ class ModularPreprocessor():
         self._preprocessor_pipeline: List[AbstractAudioPreprocessor] = []
         for processor in preprocessor_pipeline:
             self._preprocessor_pipeline.append(create_class_instance(processor.value)())
+        
+        if source_seperation_module is not SourceSeperationModule.OFF:
+            self._source_seperation_module = create_class_instance(source_seperation_module.value)(keep_original)
+        else:
+            self._source_seperation_module = False
 
-        self._source_seperation_module = create_class_instance(source_seperation_module.value)(keep_origional)
         self._stft = create_class_instance(stft_backend.value)()
 
 
     def run(self):
         print('Loading Dataset ...')
-        df = self._dataset.load()
+        df, metadata = self._dataset.load()
 
         print('Shuffle Dataset ...')
         split = {}
@@ -88,20 +94,23 @@ class ModularPreprocessor():
             [int(0.6*len(df)), int(0.8*len(df))]
         )
 
+        metadata_created = False
         for (key, df) in split.items():
             print(f'Splitting {key} dataset into chunks ...')
             chunks = np.array_split(df, math.ceil(df.shape[0] / self._chunk_size))
  
             for index, chunk in enumerate(chunks):
                 print(f'Processing Chunk {str(index)}')
+                print(f'Loading Files')
                 data = self._file_loader.load(chunk)
 
                 print('Processing pipeline')
                 for preprocessor in self._preprocessor_pipeline:
                     data = preprocessor.process(data)
 
-                print('Processing source seperation')
-                data = self._source_seperation_module.process(data)
+                if self._source_seperation_module:
+                    print('Processing source seperation')
+                    data = self._source_seperation_module.process(data)
 
                 print('Converting to spectrogram')
                 data = self._stft.convert(data)
@@ -113,6 +122,14 @@ class ModularPreprocessor():
                     audio = np.array(file[1])
                     audio_data.append(audio)
                     labels.append(file[0])
+
+                    if not metadata_created:
+                        metadata_created = True
+                        metadata['data_shape'] = (audio.shape[1],audio.shape[2])
+                        metadata['split_count'] = audio.shape[0] 
+                        with open(f'{self._dataset.destination}/metadata.json', 'w') as outfile:
+                            json.dump(metadata, outfile)
+
                 np.savez(f'{self._dataset.destination}/arr_{key}_{str(index)}', np.array(audio_data), np.array(labels))
                 gc.collect()
 

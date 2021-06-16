@@ -2,6 +2,7 @@ from numpy.core.fromnumeric import shape, squeeze
 from .abstract_model import AbstractModel
 
 import os
+import json
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
@@ -10,10 +11,10 @@ from datetime import datetime
 import sklearn
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.constraints import max_norm
 from tensorflow.keras.optimizers import (
     Adam,
 )
+
 from tensorflow.keras.layers import (
     Dense,
     Activation,
@@ -34,21 +35,26 @@ from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnP
 class ParallelCRNN(AbstractModel):
 
     def __init__(self, dataset_path):
-        self._dataset_path = dataset_path
-        self._model = self._create_parallel_cnn_birnn_model()
         self._batch_size = 16
         self._epoch_count = 70
+
+        self._dataset_path = dataset_path
+        self._metadata = json.load(open(f'{self._dataset_path}/metadata.json'))
+
         self._log_time = datetime.now().strftime('%d-%m-%Y-%H-%M-%S')
+        self._log_path = f'./logs/ParallelCRNN/{self._log_time}'
         if not os.path.exists('./logs'):
             os.makedirs('./logs')
-        os.makedirs(f'./logs/ParallelCRNN_{self._log_time}')
+        os.makedirs(self._log_path)
+
+        self._model = self._create_parallel_cnn_birnn_model()
 
 
     def train(self):
         x_train, y_train, x_valid, y_valid = [], [], [], []
         
-        for np_name in tqdm(glob(f'{self._dataset_path}arr_train_*.npz'), ncols=100):
-            npzfile = np.load(np_name)
+        for file in tqdm(glob(f'{self._dataset_path}/arr_train_*.npz'), ncols=100):
+            npzfile = np.load(file)
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
         
@@ -59,12 +65,12 @@ class ParallelCRNN(AbstractModel):
         y_train = np.concatenate(y_train, axis=0)
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
 
-        for np_name in tqdm(glob(f'{self._dataset_path}arr_validate_*.npz'), ncols=100):
-            npzfile = np.load(np_name)
+        for file in tqdm(glob(f'{self._dataset_path}/arr_validate_*.npz'), ncols=100):
+            npzfile = np.load(file)
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
 
-        print(x_valid[0].shape)
+        print(x_valid[0].shapsoure)
         print(y_valid[0].shape)
 
         x_valid = np.concatenate(x_valid, axis=0)
@@ -119,8 +125,8 @@ class ParallelCRNN(AbstractModel):
     def evaluate(self):
         x_test, y_test = [], []
 
-        for np_name in tqdm(glob(f'{self._dataset_path}arr_test_*.npz'), ncols=100):
-            npzfile = np.load(np_name)
+        for file in tqdm(glob(f'{self._dataset_path}/arr_test_*.npz'), ncols=100):
+            npzfile = np.load(file)
             x_test.append(npzfile['arr_0'])
             y_test.append(npzfile['arr_1'])
 
@@ -132,7 +138,8 @@ class ParallelCRNN(AbstractModel):
         file = open(f'./logs/{self._log_time}/evaluation.log', 'w')
         file.write(f'Test loss: {score[0]} / Test accuracy: {score[1]}')
 
-
+        # TODO: confusion matrix
+        # f1 score
 
 
     def _create_cnn_block(self, Input_Layer):
@@ -220,18 +227,23 @@ class ParallelCRNN(AbstractModel):
         Sub_Net_Outputs = []
 
     
-        for _ in range(0, 3):            
-            Input_Layer = Input((128, 1290, 1))
+        for _ in range(0, self._metadata['split_count']):            
+            Input_Layer = Input(
+                (
+                    self._metadata['data_shape'][0],
+                    self._metadata['data_shape'][1],
+                    1
+                )
+            )
             Input_List.append(Input_Layer)
             Sub_Net_Outputs.append(self._create_cnn_block(Input_Layer)) 
             Sub_Net_Outputs.append(self._create_birnn_block(Input_Layer))
             #Sub_Net_Outputs.append(self._create_classification_block(self._create_cnn_block(Input_Layer), self._create_birnn_block(Input_Layer)))
 
-        encoded_labels = np.load(f'{self._dataset_path}encoded_labels.npy')
 
         Final_Classification_Block = concatenate(Sub_Net_Outputs, axis=-1)
         Final_Classification_Block = Dropout(0.5)(Final_Classification_Block)
-        Output_Layer = Dense(encoded_labels.shape[0], activation='softmax')(
+        Output_Layer = Dense(self._metadata['label_count'], activation='softmax')(
             Final_Classification_Block
         )
 
@@ -244,6 +256,6 @@ class ParallelCRNN(AbstractModel):
         )
 
         model.summary()
-        tf.keras.utils.plot_model(model, show_shapes=True, show_layer_names=True, rankdir='TB', expand_nested=True)
+        tf.keras.utils.plot_model(model,to_file=self._log_path, show_shapes=True, show_layer_names=True, rankdir='TB', expand_nested=True)
 
         return model

@@ -24,14 +24,14 @@ class SpleeterPreprocessor(AbstractAudioPreprocessor):
 
 
     def process(self, data):
-        for index, file in enumerate(tqdm(data, desc='Splitting Files')):
+        for index, file in enumerate(tqdm(data)):
             waveform = file[1][0]
             try:
                 prediction = self._seperator.separate(waveform, "")
                 if self._keep_original:
                     data[index][1].extend(prediction.values())
                 else:
-                    data[index][1] = prediction.values()
+                    data[index][1] = list(prediction.values())
             except KeyboardInterrupt:
                 exit(1)
             except Exception as e:

@@ -6,7 +6,7 @@ import librosa as lr
 class LibrosaCPUSTFT():
 
     def convert(self, data):
-        for index, file in enumerate(tqdm(data, desc='Converting data to spectrograms')):
+        for index, file in enumerate(tqdm(data)):
             for (audio_index, waveform) in enumerate(file[1]):
                 data[index][1][audio_index] = self._stft_librosa(self._to_mono(waveform))[:, :1290]
         return data
@@ -35,7 +35,7 @@ class LibrosaCPUSTFT():
 class TensorflowGPUSTFT():
 
     def convert(self, data):
-        for index, file in enumerate(tqdm(data, desc='Converting data to spectrograms')):
+        for index, file in enumerate(tqdm(data)):
             for (audio_index, waveform) in enumerate(file[1]):
                 data[index][1][audio_index] = self._stft_backend(self._to_mono(waveform))[:, :1290]
         return data

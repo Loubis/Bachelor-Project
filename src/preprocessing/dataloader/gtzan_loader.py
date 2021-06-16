@@ -8,7 +8,7 @@ class GtzanLoader(AbstractDatasetLoader):
         self.destination = self._os.path.join(base_path, 'processed' ,'gtzan')
         if not self._os.path.exists(self.destination):
             self._os.makedirs(self.destination)
-        self._PATH = self._os.path.join(base_path, 'gtzan')
+        self._PATH = self._os.path.join(base_path, 'raw', 'gtzan')
         self._DATA_SET = self._os.path.join(self._PATH, 'genres_original')
         self._META_DATA_30_SEC = self._os.path.join(self._PATH, 'features_30_sec.csv')
 
@@ -27,9 +27,10 @@ class GtzanLoader(AbstractDatasetLoader):
 
         df['label'] = df['label'].apply(lambda label: genres_dict[label])
         
-        # Swap dict keys and values and save
-        genres_dict = dict([(value, key) for key, value in genres_dict.items()]) 
-        self._np.save(self.destination + '/encoded_labels.npy', self._np.array(list(genres_dict.items())))
+        metadata = {
+            'label_count': len(genres_dict),
+            'labels': genres_dict
+            
+        }
 
-        return df.rename(columns={ 'filename': 'file' })
-
+        return df.rename(columns={ 'filename': 'file' }), metadata
