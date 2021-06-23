@@ -23,11 +23,12 @@ class FmaSmallLoader(AbstractDatasetLoader):
         for label in genres:
             genres_dict.update({ label: len(genres_dict) })
         
-        # Swap dict keys and values and save
-        genres_dict_swapped = dict([(value, key) for key, value in genres_dict.items()]) 
-        self._np.save(self.destination + '/encoded_labels.npy', self._np.array(list(genres_dict_swapped.items())))
 
+        metadata = {
+            'label_count': len(genres_dict),
+            'labels': genres_dict
+        }
 
         return self._pd.DataFrame(
             { 'file': self._os.path.join(self._DATA_SET, "{:06d}".format(index)[:3], "{:06d}".format(index) + ".mp3"), 'label': genres_dict[label] } for (index, label) in df.itertuples()
-        )
+        ), metadata

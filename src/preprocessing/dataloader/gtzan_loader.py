@@ -30,7 +30,6 @@ class GtzanLoader(AbstractDatasetLoader):
         metadata = {
             'label_count': len(genres_dict),
             'labels': genres_dict
-            
         }
 
         return df.rename(columns={ 'filename': 'file' }), metadata
