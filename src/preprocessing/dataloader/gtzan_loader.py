@@ -3,9 +3,9 @@ from .dataset_loader import AbstractDatasetLoader
 
 class GtzanLoader(AbstractDatasetLoader):
 
-    def __init__(self, base_path: str) -> None:
+    def __init__(self, base_path: str, pipeline_str: str) -> None:
         super().__init__()
-        self.destination = self._os.path.join(base_path, 'processed' ,'gtzan')
+        self.destination = self._os.path.join(base_path, 'processed', f'gtzan{pipeline_str}')
         if not self._os.path.exists(self.destination):
             self._os.makedirs(self.destination)
         self._PATH = self._os.path.join(base_path, 'raw', 'gtzan')

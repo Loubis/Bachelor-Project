@@ -9,6 +9,8 @@ from tqdm import tqdm
 from glob import glob
 from datetime import datetime
 import sklearn
+from sklearn.metrics import classification_report
+
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import (
@@ -34,17 +36,15 @@ from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnP
 
 class ParallelCRNN(AbstractModel):
 
-    def __init__(self, dataset_path):
+    def __init__(self, base_path, dataset):
         self._batch_size = 16
         self._epoch_count = 70
 
-        self._dataset_path = dataset_path
+        self._dataset_path = base_path + dataset
         self._metadata = json.load(open(f'{self._dataset_path}/metadata.json'))
 
         self._log_time = datetime.now().strftime('%d-%m-%Y-%H-%M-%S')
-        self._log_path = f'./logs/ParallelCRNN/{self._log_time}'
-        if not os.path.exists('./logs'):
-            os.makedirs('./logs')
+        self._log_path = f'./logs/ParallelCRNN/{dataset}/{self._log_time}'
         os.makedirs(self._log_path)
 
         self._model = self._create_parallel_cnn_birnn_model()
@@ -58,9 +58,6 @@ class ParallelCRNN(AbstractModel):
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
         
-        print(x_train[0].shape)
-        print(y_train[0].shape)
-
         x_train = np.concatenate(x_train, axis=0)
         y_train = np.concatenate(y_train, axis=0)
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
@@ -70,15 +67,12 @@ class ParallelCRNN(AbstractModel):
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
 
-        print(x_valid[0].shapsoure)
-        print(y_valid[0].shape)
-
         x_valid = np.concatenate(x_valid, axis=0)
         y_valid = np.concatenate(y_valid, axis=0)
         x_valid, y_valid = sklearn.utils.shuffle(x_valid, y_valid)
 
         tb_callback = TensorBoard(
-            log_dir = f'./logs/{self._log_time}/tensorboard',
+            log_dir = f'{self._log_path}/tensorboard',
             histogram_freq = 1,
             write_graph = True,
             write_grads = False,
@@ -89,7 +83,7 @@ class ParallelCRNN(AbstractModel):
         )
 
         checkpoint_callback = ModelCheckpoint(
-            f'./logs/{self._log_time}/weights.best.h5',
+            f'{self._log_path}/weights.best.h5',
             monitor='val_accuracy',
             verbose=1,
             save_best_only=True,
@@ -100,26 +94,23 @@ class ParallelCRNN(AbstractModel):
             monitor='val_accuracy', factor=0.5, patience=10, min_delta=0.01, verbose=1
         )
 
-        print("Train", [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), 3 , axis=1) ])
-        print("Test" ,[ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), 3 , axis=1) ])
-
         callbacks_list = [reducelr_callback, checkpoint_callback, tb_callback]
         print('Training...')
         self._model.fit(
-            [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), 3 , axis=1) ],
+            [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_train, axis=-1), self._metadata['split_count'], axis=1) ],
             y_train,
             batch_size=self._batch_size,
             epochs=self._epoch_count,
             validation_data=( 
-                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), 3 , axis=1) ],
+                [ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_valid, axis=-1), self._metadata['split_count'], axis=1) ],
                 y_valid
             ),
             verbose=1,
             callbacks=callbacks_list,
         )
 
-        os.mkdir(f'./logs/{self._log_time}/trained_model')
-        self._model.save(f'./logs/{self._log_time}/trained_model')
+        os.mkdir(f'{self._log_path}/trained_model')
+        self._model.save(f'{self._log_path}/trained_model')
 
 
     def evaluate(self):
@@ -133,13 +124,13 @@ class ParallelCRNN(AbstractModel):
         x_test = np.concatenate(x_test, axis=0)
         y_test = np.concatenate(y_test, axis=0)
 	    
-        score = self._model.evaluate([ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_test, axis=-1), 3 , axis=1) ], y_test)
-        
-        file = open(f'./logs/{self._log_time}/evaluation.log', 'w')
-        file.write(f'Test loss: {score[0]} / Test accuracy: {score[1]}')
+        score = self._model.evaluate([ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_test, axis=-1), self._metadata['split_count'], axis=1) ], y_test)
+        y_predictions = self._model.predict([ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_test, axis=-1), self._metadata['split_count'], axis=1) ])
+        y_predictions = np.argmax(y_predictions, axis=1)
 
-        # TODO: confusion matrix
-        # f1 score
+        with open(f'{self._log_path}/evaluation.log', 'w') as file:
+            file.write(f'Test loss: {score[0]} / Test accuracy: {score[1]}\n\n')
+            file.write(classification_report(y_test, y_predictions, target_names=self._metadata['labels'].keys()))
 
 
     def _create_cnn_block(self, Input_Layer):
@@ -256,6 +247,6 @@ class ParallelCRNN(AbstractModel):
         )
 
         model.summary()
-        tf.keras.utils.plot_model(model,to_file=self._log_path, show_shapes=True, show_layer_names=True, rankdir='TB', expand_nested=True)
+        tf.keras.utils.plot_model(model,to_file=f'{self._log_path}/model.png', show_shapes=True, show_layer_names=True, rankdir='TB', expand_nested=True)
 
         return model

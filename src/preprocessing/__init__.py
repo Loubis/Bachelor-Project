@@ -67,20 +67,29 @@ class ModularPreprocessor():
         stft_backend = STFTBackend,
         chunk_size = 100
     ):
-        self._dataset: AbstractDatasetLoader = create_class_instance(dataset.value)(dataset_path)
+        pipeline_str = ''
+
         self._chunk_size = chunk_size
         self._file_loader = FileLoader()
 
         self._preprocessor_pipeline: List[AbstractAudioPreprocessor] = []
         for processor in preprocessor_pipeline:
             self._preprocessor_pipeline.append(create_class_instance(processor.value)())
+            pipeline_str += f'_{processor.value}'
         
         if source_seperation_module is not SourceSeperationModule.OFF:
             self._source_seperation_module = create_class_instance(source_seperation_module.value)(keep_original)
+            pipeline_str += f'_{source_seperation_module.value}'
+            if keep_original:
+                pipeline_str += f'_keepOriginal'
         else:
             self._source_seperation_module = False
+            pipeline_str += f'_noSeperation'
 
         self._stft = create_class_instance(stft_backend.value)()
+        pipeline_str += f'_{stft_backend.value}'
+
+        self._dataset: AbstractDatasetLoader = create_class_instance(dataset.value)(dataset_path, pipeline_str)
 
 
     def run(self):
