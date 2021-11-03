@@ -37,8 +37,8 @@ from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnP
 class ParallelCRNN(AbstractModel):
 
     def __init__(self, base_path, dataset):
-        self._batch_size = 16
-        self._epoch_count = 70
+        self._batch_size = 32
+        self._epoch_count = 100
 
         self._dataset_path = base_path + dataset
         self._metadata = json.load(open(f'{self._dataset_path}/metadata.json'))
@@ -199,18 +199,6 @@ class ParallelCRNN(AbstractModel):
         return BiRNN_Block
 
 
-    # Classification Block
-    def _create_classification_block(self, CNN_Block, BiRNN_Block):
-        Classification_Block = concatenate([CNN_Block, BiRNN_Block], axis=-1)
-        Classification_Block = Dropout(0.5)(Classification_Block)
-
-        Output_Layer = Dense(896, activation='relu')(
-            Classification_Block
-        )
-
-        return Output_Layer
-
-
     def _create_parallel_cnn_birnn_model(self):
 
         print('Creating model...')
@@ -229,7 +217,6 @@ class ParallelCRNN(AbstractModel):
             Input_List.append(Input_Layer)
             Sub_Net_Outputs.append(self._create_cnn_block(Input_Layer)) 
             Sub_Net_Outputs.append(self._create_birnn_block(Input_Layer))
-            #Sub_Net_Outputs.append(self._create_classification_block(self._create_cnn_block(Input_Layer), self._create_birnn_block(Input_Layer)))
 
 
         Final_Classification_Block = concatenate(Sub_Net_Outputs, axis=-1)

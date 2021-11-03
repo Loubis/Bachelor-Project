@@ -2,7 +2,7 @@ from typing import NoReturn
 from .audio_processor import AbstractAudioPreprocessor
 
 import numpy as np
-
+from tqdm import tqdm
 
 
 class AudioSplit(AbstractAudioPreprocessor):
@@ -12,8 +12,9 @@ class AudioSplit(AbstractAudioPreprocessor):
 
 
     def process(self,data):
+        print(f'Splitting audio in {self._number_of_splits} parts of {30/self._number_of_splits} seconds')
         new_data = list()
-        for file in data:
+        for file in tqdm(data):
             new_data.extend([ [file[0], [split]] for split in np.split(file[1][0], self._number_of_splits)])
         return new_data
 
