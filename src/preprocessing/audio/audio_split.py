@@ -5,33 +5,46 @@ import numpy as np
 from tqdm import tqdm
 
 
-class AudioSplit(AbstractAudioPreprocessor):
-
-    def __init__(self, number_of_splits):
-        self._number_of_splits = number_of_splits
+class AudioSlice(AbstractAudioPreprocessor):
+    def __init__(self, slice_length):
+        self._slice_length = slice_length
 
 
     def process(self,data):
-        print(f'Splitting audio in {self._number_of_splits} parts of {30/self._number_of_splits} seconds')
-        new_data = list()
+        print(f'Sliceting audio in parts of {self._slice_length} seconds')
+
+        new_data = []
         for file in tqdm(data):
-            new_data.extend([ [file[0], [split]] for split in np.split(file[1][0], self._number_of_splits)])
+            surplus = file[1]["original"].shape[1] % (44100 * self._slice_length)
+            number_of_slices = file[1]["original"].shape[1] // (44100 * self._slice_length)
+
+            slices = [
+                np.array_split(file[1]["original"][0][surplus:], number_of_slices),
+                np.array_split(file[1]["original"][1][surplus:], number_of_slices)
+            ]
+            for i in range(0, number_of_slices):
+                new_data.append([
+                    file[0], 
+                    { 
+                        "original": np.array([
+                            slices[0][i],
+                            slices[1][i],
+                        ])
+                    }
+                ])
         return new_data
 
 
-class AudioSplit_in_3(AudioSplit):
-
+class AudioSlice_in_3_sec(AudioSlice):
     def __init__(self):
         super().__init__(3)
 
 
-class AudioSplit_in_6(AudioSplit):
-
+class AudioSlice_in_6_sec(AudioSlice):
     def __init__(self):
         super().__init__(6)
 
 
-class AudioSplit_in_10(AudioSplit):
-    
+class AudioSlice_in_10_sec(AudioSlice):
     def __init__(self):
         super().__init__(10)

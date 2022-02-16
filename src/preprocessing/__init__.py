@@ -1,7 +1,7 @@
 from typing import List
-from enum import Enum
-from pandas.io.parsers import PythonParser
-from tqdm import tqdm
+from enum import EnumMeta
+from multiprocessing import Process
+
 
 import numpy as np
 import pandas as pd
@@ -9,23 +9,18 @@ import math
 import gc
 import json
 
+from preprocessing.audio.time_stretch_processor import TimeStretchProcessorFactor0_8, TimeStretchProcessorFactor1_2
+
 from .dataloader.dataset_loader import AbstractDatasetLoader
 from .dataloader.file_loader import FileLoader
 from .dataloader.gtzan_loader import GtzanLoader
 from .dataloader.fma_small_loader import FmaSmallLoader
 from .dataloader.fma_medium_loader import FmaMediumLoader
-
 from .audio.audio_processor import AbstractAudioPreprocessor
-
 from .audio.spleeter_processor import SpleeterCPUPreprocessor, SpleeterGPUPreprocessor
-
-from .audio.audio_split import AudioSplit_in_3, AudioSplit_in_6, AudioSplit_in_10
-
+from .audio.audio_split import AudioSlice_in_3_sec, AudioSlice_in_6_sec, AudioSlice_in_10_sec
+from preprocessing.audio.pitch_shift_processor import PitchShiftProcessor1SemitonesDown, PitchShiftProcessor1SemitonesUp, PitchShiftProcessor2SemitonesDown, PitchShiftProcessor2SemitonesUp
 from .audio.STFT import LibrosaCPUSTFT
-
-
-def create_class_instance(classname: str):
-    return globals()[classname]
 
 
 class STFTBackend(Enum):
@@ -39,9 +34,15 @@ class Dataset(Enum):
 
 
 class PreprocessorModule(Enum):
-    SPLIT_IN_3: str  = AudioSplit_in_3.__name__
-    SPLIT_IN_6: str  = AudioSplit_in_6.__name__
-    SPLIT_IN_10: str = AudioSplit_in_10.__name__
+    AUDIO_SLICE_IN_3_SEC:        str = AudioSlice_in_3_sec.__name__
+    AUDIO_SLICE_IN_6_SEC:        str = AudioSlice_in_6_sec.__name__
+    AUDIO_SLICE_IN_10_SEC:       str = AudioSlice_in_10_sec.__name__
+    PITCH_SHIFT_1_SEMITONE_UP:   str = PitchShiftProcessor1SemitonesUp.__name__
+    PITCH_SHIFT_2_SEMITONE_UP:   str = PitchShiftProcessor2SemitonesUp.__name__
+    PITCH_SHIFT_1_SEMITONE_DOWN: str = PitchShiftProcessor1SemitonesDown.__name__
+    PITCH_SHIFT_2_SEMITONE_DOWN: str = PitchShiftProcessor2SemitonesDown.__name__
+    TIME_STRETCH_1_2:            str = TimeStretchProcessorFactor1_2.__name__
+    TIME_STRETCH_0_8:            str = TimeStretchProcessorFactor0_8.__name__
 
 
 class SourceSeperationModule(Enum):
@@ -56,8 +57,11 @@ class SeperationModel(Enum):
     MODEL_5_STEMS = 'spleeter:5stems'
 
 
-class ModularPreprocessor():
+# Helper to create Class Instances through name as string
+def create_class_instance(classname: str):
+    return globals()[classname]
 
+class ModularPreprocessor():
     def __init__(
         self, 
         dataset_path: str, dataset: Dataset, 
@@ -95,28 +99,28 @@ class ModularPreprocessor():
 
     def run(self):
         print('Loading Dataset ...')
-        df, metadata = self._dataset.load()
-
-        print('Shuffle Dataset ...')
-        split = {}
-        split['train'], split['validate'], split['test'] = np.split(
-            df.sample(frac=1).reset_index(drop=True), 
-            [int(0.6*len(df)), int(0.8*len(df))]
-        )
+        split, metadata = self._dataset.load()
 
         metadata_created = False
         for (key, df) in split.items():
             print(f'Splitting {key} dataset into chunks ...')
             chunks = np.array_split(df, math.ceil(df.shape[0] / self._chunk_size))
- 
+
             for index, chunk in enumerate(chunks):
                 print(f'Processing Chunk {str(index)}')
                 print(f'Loading Files')
                 data = self._file_loader.load(chunk)
+                augmented_data = []
 
+                processes = []
                 print('Processing pipeline')
                 for preprocessor in self._preprocessor_pipeline:
-                    data = preprocessor.process(data)
+                    augmented_data = augmented_data + preprocessor.process(data)
+
+                print('Merge data and augmented data')
+                data = data + augmented_data
+                splitter = create_class_instance(PreprocessorModule.AUDIO_SLICE_IN_10_SEC.value)()
+                data = splitter.process(data)
 
                 if self._source_seperation_module:
                     print('Processing source seperation')
@@ -129,14 +133,14 @@ class ModularPreprocessor():
                 audio_data = []
                 labels = []
                 for file in data:
-                    audio = np.array(file[1])
+                    audio = file[1]
                     audio_data.append(audio)
                     labels.append(file[0])
 
                     if not metadata_created:
                         metadata_created = True
-                        metadata['data_shape'] = (audio.shape[1],audio.shape[2])
-                        metadata['split_count'] = audio.shape[0] 
+                        metadata['data_shape'] = (list(audio.values())[0].shape[0], list(audio.values())[0].shape[1])
+                        metadata['split_count'] = len(list(audio.values()))
                         with open(f'{self._dataset.destination}/metadata.json', 'w') as outfile:
                             json.dump(metadata, outfile)
 

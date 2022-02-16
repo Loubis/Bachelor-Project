@@ -1,15 +1,16 @@
-from model.parallel_crnn import ParallelCRNN
-
 from preprocessing import ModularPreprocessor, Dataset, PreprocessorModule, SeperationModel, SourceSeperationModule, STFTBackend
 
 
 def main():
     pipeline = [
-        PreprocessorModule.SPLIT_IN_3
+        PreprocessorModule.PITCH_SHIFT_2_SEMITONE_DOWN,
+        PreprocessorModule.PITCH_SHIFT_2_SEMITONE_UP,
+        PreprocessorModule.TIME_STRETCH_0_8,
+        PreprocessorModule.TIME_STRETCH_1_2,
     ]
 
     preprocessor = ModularPreprocessor(
-        dataset_path='/datashare_small/osterburg_data',
+        dataset_path='/data',
         dataset=Dataset.FMA_MEDIUM,
         preprocessor_pipeline=pipeline,
         source_seperation_module=SourceSeperationModule.SPLEETER_GPU,

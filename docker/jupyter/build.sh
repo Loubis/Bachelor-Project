@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-docker build -t techisland/tensorflow-gpu-jupyter:v1 .
+docker build -t techisland/tensorflow-gpu-jupyter .
