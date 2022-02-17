@@ -2,6 +2,7 @@ from preprocessing.audio.audio_processor import AbstractAudioPreprocessor
 import librosa
 import numpy as np
 from tqdm import tqdm
+from multiprocessing import Pool
 
 class TimeStretchProcessor(AbstractAudioPreprocessor):
     def __init__(self, stretch_rate):
@@ -9,10 +10,13 @@ class TimeStretchProcessor(AbstractAudioPreprocessor):
 
 
     def process(self, data):
-        augmented_data = []
         print(f'Time stretching audio by rate of {self._stretch_rate}')
-        for index, file in enumerate(tqdm(data)):
-            augmented_data.append([
+        pool = Pool(4)
+        return list(tqdm(pool.imap(self._pool_func, data), total=len(data)))
+
+
+    def _pool_func(self, file):
+        return [
                 # Label
                 file[0],
                 # Audio
@@ -27,8 +31,7 @@ class TimeStretchProcessor(AbstractAudioPreprocessor):
                         librosa.effects.time_stretch(file[1]["original"][1], rate=self._stretch_rate)
                     ))
                 }
-            ])
-        return augmented_data
+        ]
 
 
 class TimeStretchProcessorFactor1_2(TimeStretchProcessor):

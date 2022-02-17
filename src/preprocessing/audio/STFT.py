@@ -7,7 +7,10 @@ class LibrosaCPUSTFT():
     def convert(self, data):
         for index, file in enumerate(tqdm(data)):
             for audio_key, waveform in file[1].items():
-                data[index][1][audio_key] = self._stft_librosa(self._to_mono(waveform))
+                try:
+                    data[index][1][audio_key] = self._stft_librosa(self._to_mono(waveform))
+                except Exception as e:
+                    print(e)
         return data
 
 

@@ -1,5 +1,5 @@
 from typing import List
-from enum import EnumMeta
+from enum import Enum
 from multiprocessing import Process
 
 
