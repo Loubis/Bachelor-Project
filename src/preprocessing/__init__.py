@@ -64,7 +64,8 @@ def create_class_instance(classname: str):
 class ModularPreprocessor():
     def __init__(
         self, 
-        dataset_path: str, dataset: Dataset, 
+        dataset_path: str,
+        dataset: Dataset, 
         preprocessor_pipeline: List[PreprocessorModule], 
         source_seperation_module: SourceSeperationModule,
         seperation_model=SeperationModel.MODEL_2_STEMS,
@@ -75,6 +76,7 @@ class ModularPreprocessor():
         pipeline_str = ''
 
         self._chunk_size = chunk_size
+        self._dataset_path = dataset_path
         self._file_loader = FileLoader()
 
         self._preprocessor_pipeline: List[AbstractAudioPreprocessor] = []
@@ -122,29 +124,33 @@ class ModularPreprocessor():
                 splitter = create_class_instance(PreprocessorModule.AUDIO_SLICE_IN_10_SEC.value)()
                 data = splitter.process(data)
 
-                if self._source_seperation_module:
-                    print('Processing source seperation')
-                    data = self._source_seperation_module.process(data)
+                np.savez(f'{self._dataset_path}/augmented/arr_{key}_{str(index)}', data)
 
-                print('Converting to spectrogram')
-                data = self._stft.convert(data)
+                # data = np.load(f'{self._dataset_path}/augmented/arr_{key}_{str(index)}')
+                # if self._source_seperation_module:
+                #     print('Processing source seperation')
+                #     data = self._source_seperation_module.process(data)
 
-                print(f'Saving {key} chunk {index}')
-                audio_data = []
-                labels = []
-                for file in data:
-                    audio = file[1]
-                    audio_data.append(audio)
-                    labels.append(file[0])
+                # print('Converting to spectrogram')
+                # data = self._stft.convert(data)
 
-                    if not metadata_created:
-                        metadata_created = True
-                        metadata['data_shape'] = (list(audio.values())[0].shape[0], list(audio.values())[0].shape[1])
-                        metadata['split_count'] = len(list(audio.values()))
-                        with open(f'{self._dataset.destination}/metadata.json', 'w') as outfile:
-                            json.dump(metadata, outfile)
+                # print(f'Saving {key} chunk {index}')
+                # audio_data = []
+                # labels = []
+                # for file in data:
+                #     audio = file[1]
+                #     audio_data.append(audio)
+                #     labels.append(file[0])
 
-                np.savez(f'{self._dataset.destination}/arr_{key}_{str(index)}', np.array(audio_data), np.array(labels))
+                #     if not metadata_created:
+                #         metadata_created = True
+                #         metadata['data_shape'] = (list(audio.values())[0].shape[0], list(audio.values())[0].shape[1])
+                #         metadata['split_count'] = len(list(audio.values()))
+                #         with open(f'{self._dataset.destination}/metadata.json', 'w') as outfile:
+                #             json.dump(metadata, outfile)
+
+                # np.savez(f'{self._dataset.destination}/arr_{key}_{str(index)}', np.array(audio_data), np.array(labels))
+
                 gc.collect()
 
             print(f'Finished {key} dataset')

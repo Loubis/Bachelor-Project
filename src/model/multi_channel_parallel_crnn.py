@@ -200,29 +200,25 @@ class ParallelCRNN(AbstractModel):
 
     def _create_parallel_cnn_birnn_model(self):
         print('Creating model...')
-        Input_List = []
-        Sub_Net_Outputs = []
-
-        for _ in range(0, self._metadata['split_count']):            
-            Input_Layer = Input(
-                (
-                    self._metadata['data_shape'][0],
-                    self._metadata['data_shape'][1],
-                    1
-                )
+    
+        Input_Layer = Input(
+            (
+                self._metadata['data_shape'][0],
+                self._metadata['data_shape'][1],
+                self._metadata['split_count']
             )
-            Input_List.append(Input_Layer)
-            Sub_Net_Outputs.append(self._create_cnn_block(Input_Layer)) 
-            Sub_Net_Outputs.append(self._create_birnn_block(Input_Layer))
+        )
 
-
-        Final_Classification_Block = concatenate(Sub_Net_Outputs, axis=-1)
+        Final_Classification_Block = concatenate([
+            self._create_cnn_block(Input_Layer),
+            self._create_birnn_block(Input_Layer),
+        ], axis=-1)
         Final_Classification_Block = Dropout(0.5)(Final_Classification_Block)
         Output_Layer = Dense(self._metadata['label_count'], activation='softmax')(
             Final_Classification_Block
         )
 
-        model = Model(Input_List, Output_Layer)
+        model = Model(Input_Layer, Output_Layer)
 
         opt = Adam(learning_rate=0.002)
         print('Compiling Model...')
