@@ -11,8 +11,11 @@ class TimeStretchProcessor(AbstractAudioPreprocessor):
 
     def process(self, data):
         print(f'Time stretching audio by rate of {self._stretch_rate}')
-        pool = Pool(4)
-        return list(tqdm(pool.imap(self._pool_func, data), total=len(data)))
+        pool = Pool(8)
+        augmented_data =  list(tqdm(pool.imap(self._pool_func, data), total=len(data)))
+        pool.close()
+        pool.join()
+        return augmented_data       
 
 
     def _pool_func(self, file):
@@ -34,11 +37,11 @@ class TimeStretchProcessor(AbstractAudioPreprocessor):
         ]
 
 
-class TimeStretchProcessorFactor1_2(TimeStretchProcessor):
+class TimeStretchProcessorFactor1_1(TimeStretchProcessor):
     def __init__(self):
-        super().__init__(1.2)
+        super().__init__(1.1)
 
 
-class TimeStretchProcessorFactor0_8(TimeStretchProcessor):
+class TimeStretchProcessorFactor0_9(TimeStretchProcessor):
     def __init__(self):
-        super().__init__(0.8)
+        super().__init__(0.9)

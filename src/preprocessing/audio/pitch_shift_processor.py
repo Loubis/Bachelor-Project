@@ -11,8 +11,11 @@ class PitchShiftProcessor(AbstractAudioPreprocessor):
 
     def process(self, data):
         print(f'Pitch shifting audio by {self._semi_tones} semi-tones')
-        pool = Pool(4)
-        return list(tqdm(pool.imap(self._pool_func, data), total=len(data)))
+        pool = Pool(8)
+        augmented_data = list(tqdm(pool.imap(self._pool_func, data), total=len(data)))
+        pool.close()
+        pool.join()
+        return augmented_data
 
 
     def _pool_func(self, file):
@@ -44,13 +47,3 @@ class PitchShiftProcessor1SemitonesUp(PitchShiftProcessor):
 class PitchShiftProcessor1SemitonesDown(PitchShiftProcessor):
     def __init__(self):
         super().__init__(-1)
-
-
-class PitchShiftProcessor2SemitonesUp(PitchShiftProcessor):
-    def __init__(self):
-        super().__init__(2)
-
-
-class PitchShiftProcessor2SemitonesDown(PitchShiftProcessor):
-    def __init__(self):
-        super().__init__(-2)

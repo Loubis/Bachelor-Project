@@ -18,14 +18,16 @@ class SpleeterPreprocessor(AbstractAudioPreprocessor):
             waveform = file[1]["original"].reshape([file[1]["original"].shape[1], 2])
             try:
                 prediction = self._seperator.separate(waveform, "")
+                print(prediction)
                 if self._keep_original:
                     data[index][1] = { "original": waveform, **prediction }
                 else:
                     data[index][1] = prediction
-            except KeyboardInterrupt:
-                exit(1)
+                print(data[index])
             except Exception as e:
                 print(e)
+            except KeyboardInterrupt:
+                exit(1)
         return data
 
 
