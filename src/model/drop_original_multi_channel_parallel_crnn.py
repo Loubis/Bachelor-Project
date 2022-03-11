@@ -34,6 +34,8 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 
+def transoform_data(x):
+    return np.array(list(x.values()))[:, : ,0:-1]
 
 class DropOriginalMultiChannelParallelCRNN(AbstractModel):
 
@@ -70,7 +72,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
 
         print('Transform Training Data Dictionary to List...')
         x_train = np.array(list(
-            map(lambda x: np.array(list(x.values())), x_train)
+            map(lambda x: transoform_data(x), x_train)
         ))
 
         print('Shuffle Training Data...')
@@ -92,7 +94,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
 
         print('Transform Validation Data Dictionary to List...')
         x_valid = np.array(list(
-            map(lambda x: np.array(list(x.values())), x_valid)
+            map(lambda x: transoform_data(x), x_valid)
         ))
         print('Shuffle Validation Data...')
         x_valid, y_valid = sklearn.utils.shuffle(x_valid, y_valid)
@@ -158,7 +160,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
 
         print('Reshape Test Data...')
         x_test = np.array(list(
-            map(lambda x: np.array(list(x.values())), x_test)
+            map(lambda x: transoform_data(x), x_test)
         ))
         
         print('Evaluate...')
@@ -174,7 +176,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
     def _create_cnn_block(self, Input_Layer):
         CNN_Block = tf.keras.layers.Reshape((
             self._metadata['data_shape'][0],
-            self._metadata['data_shape'][1],
+            self._metadata['data_shape'][1] - 1,
             self._metadata['split_count'] - 1,
         ))(Input_Layer)
 
@@ -250,7 +252,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
             (
                 self._metadata['split_count'] - 1,
                 self._metadata['data_shape'][0],
-                self._metadata['data_shape'][1],
+                self._metadata['data_shape'][1] - 1,
             )
         )
 
