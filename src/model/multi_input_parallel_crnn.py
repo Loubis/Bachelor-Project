@@ -34,17 +34,17 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 
 
-class ParallelCRNN(AbstractModel):
+class MultiInputParallelCRNN(AbstractModel):
 
     def __init__(self, base_path, dataset):
         self._batch_size = 32
-        self._epoch_count = 100
+        self._epoch_count = 50
 
         self._dataset_path = base_path + dataset
         self._metadata = json.load(open(f'{self._dataset_path}/metadata.json'))
 
         self._log_time = datetime.now().strftime('%d-%m-%Y-%H-%M-%S')
-        self._log_path = f'./logs/ParallelCRNN/{dataset}/{self._log_time}'
+        self._log_path = f'./logs/MultiInputParallelCRNN/{dataset}/{self._log_time}'
         os.makedirs(self._log_path)
 
         self._model = self._create_parallel_cnn_birnn_model()
@@ -53,22 +53,36 @@ class ParallelCRNN(AbstractModel):
     def train(self):
         x_train, y_train, x_valid, y_valid = [], [], [], []
         
-        for file in tqdm(glob(f'{self._dataset_path}/arr_train_*.npz'), ncols=100):
-            npzfile = np.load(file)
+        print('Loading Training Data...')
+        for file in tqdm(glob(f'{self._dataset_path}/arr_training_*.npz'), ncols=100):
+            npzfile = np.load(file, allow_pickle=True)
             x_train.append(npzfile['arr_0'])
             y_train.append(npzfile['arr_1'])
-        
+
+        print('Concatenate Training Data...')
         x_train = np.concatenate(x_train, axis=0)
         y_train = np.concatenate(y_train, axis=0)
+        print('Transform Training Data Dictionary to List...')
+        x_train = list(
+            map(lambda x: list(x.values()), x_train)
+        )
+        print('Shuffle Training Data...')
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
 
-        for file in tqdm(glob(f'{self._dataset_path}/arr_validate_*.npz'), ncols=100):
-            npzfile = np.load(file)
+        print('Loading Validation Data...')
+        for file in tqdm(glob(f'{self._dataset_path}/arr_validation_*.npz'), ncols=100):
+            npzfile = np.load(file, allow_pickle=True)
             x_valid.append(npzfile['arr_0'])
             y_valid.append(npzfile['arr_1'])
 
+        print('Concatenate Validation Data...')
         x_valid = np.concatenate(x_valid, axis=0)
         y_valid = np.concatenate(y_valid, axis=0)
+        print('Transform Validation Data Dictionary to List...')
+        x_valid = list(
+            map(lambda x: list(x.values()), x_valid)
+        )
+        print('Shuffle Validation Data...')
         x_valid, y_valid = sklearn.utils.shuffle(x_valid, y_valid)
 
         tb_callback = TensorBoard(
@@ -117,11 +131,12 @@ class ParallelCRNN(AbstractModel):
         x_test, y_test = [], []
 
         for file in tqdm(glob(f'{self._dataset_path}/arr_test_*.npz'), ncols=100):
-            npzfile = np.load(file)
+            npzfile = np.load(file, allow_pickle=True)
             x_test.append(npzfile['arr_0'])
             y_test.append(npzfile['arr_1'])
 
         x_test = np.concatenate(x_test, axis=0)
+        x_test = list(map(lambda x: np.array(list(x.values())), x_test))
         y_test = np.concatenate(y_test, axis=0)
 
         score = self._model.evaluate([ np.squeeze(arr, axis=1) for arr in np.split(np.expand_dims(x_test, axis=-1), self._metadata['split_count'], axis=1) ], y_test)
@@ -134,6 +149,12 @@ class ParallelCRNN(AbstractModel):
 
 
     def _create_cnn_block(self, Input_Layer):
+        #CNN_Block = tf.keras.layers.Reshape((
+        #    self._metadata['data_shape'][0],
+        #    self._metadata['data_shape'][1],
+        #    1,
+        #))(Input_Layer)
+
         CNN_Block = Conv2D(
             filters=16,
             kernel_size=[3, 3],
@@ -191,7 +212,6 @@ class ParallelCRNN(AbstractModel):
 
     def _create_birnn_block(self, Input_Layer):
         BiRNN_Block = MaxPool2D(pool_size=(1, 4), strides=(1, 4))(Input_Layer)
-
         BiRNN_Block = Lambda(lambda x: tf.keras.backend.squeeze(x, axis=-1))(BiRNN_Block)
         BiRNN_Block = Bidirectional(GRU(128))(BiRNN_Block)
         BiRNN_Block = Dropout(0.5)(BiRNN_Block)
@@ -200,11 +220,9 @@ class ParallelCRNN(AbstractModel):
 
 
     def _create_parallel_cnn_birnn_model(self):
-
         print('Creating model...')
         Input_List = []
         Sub_Net_Outputs = []
-
     
         for _ in range(0, self._metadata['split_count']):            
             Input_Layer = Input(

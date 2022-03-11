@@ -35,7 +35,7 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 
 
-class MultiChannelParallelCRNN(AbstractModel):
+class DropOriginalMultiChannelParallelCRNN(AbstractModel):
 
     def __init__(self, base_path, dataset):
         self._batch_size = 32
@@ -45,7 +45,7 @@ class MultiChannelParallelCRNN(AbstractModel):
         self._metadata = json.load(open(f'{self._dataset_path}/metadata.json'))
 
         self._log_time = datetime.now().strftime('%d-%m-%Y-%H-%M-%S')
-        self._log_path = f'./logs/MultiChannelParallelCRNN/{dataset}/{self._log_time}'
+        self._log_path = f'./logs/DropOriginalMultiChannelParallelCRNN/{dataset}/{self._log_time}'
         os.makedirs(self._log_path)
 
         self._model = self._create_parallel_cnn_birnn_model()
@@ -63,16 +63,18 @@ class MultiChannelParallelCRNN(AbstractModel):
         print('Concatenate Training Data...')
         x_train = np.concatenate(x_train, axis=0)
         y_train = np.concatenate(y_train, axis=0)
+
+        print('Remove orginal Entry from Dictionary...')
+        for entry in x_train:
+            del entry['original']
+
         print('Transform Training Data Dictionary to List...')
         x_train = np.array(list(
             map(lambda x: np.array(list(x.values())), x_train)
         ))
-        print(len(x_train))
-        print(len(y_train))
 
         print('Shuffle Training Data...')
         x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
-
 
         print('Loading Validation Data...')
         for file in tqdm(glob(f'{self._dataset_path}/arr_validation_*.npz'), ncols=100):
@@ -83,6 +85,11 @@ class MultiChannelParallelCRNN(AbstractModel):
         print('Concatenate Validation Data...')
         x_valid = np.concatenate(x_valid, axis=0)
         y_valid = np.concatenate(y_valid, axis=0)
+
+        print('Remove orginal Entry from Dictionary...')
+        for entry in x_valid:
+            del entry['original']
+
         print('Transform Validation Data Dictionary to List...')
         x_valid = np.array(list(
             map(lambda x: np.array(list(x.values())), x_valid)
@@ -144,10 +151,15 @@ class MultiChannelParallelCRNN(AbstractModel):
         print('Concatenate Test Data...')
         x_test = np.concatenate(x_test, axis=0)
         y_test = np.concatenate(y_test, axis=0)
+
+        print('Remove orginal Entry from Dictionary...')
+        for entry in x_test:
+            del entry['original']
+
         print('Reshape Test Data...')
-        x_test = list(
-            map(lambda x: list(x.values()), x_test)
-        )
+        x_test = np.array(list(
+            map(lambda x: np.array(list(x.values())), x_test)
+        ))
         
         print('Evaluate...')
         score = self._model.evaluate(x_test, y_test)
@@ -163,7 +175,7 @@ class MultiChannelParallelCRNN(AbstractModel):
         CNN_Block = tf.keras.layers.Reshape((
             self._metadata['data_shape'][0],
             self._metadata['data_shape'][1],
-            self._metadata['split_count'],
+            self._metadata['split_count'] - 1,
         ))(Input_Layer)
 
         CNN_Block = Conv2D(
@@ -236,7 +248,7 @@ class MultiChannelParallelCRNN(AbstractModel):
     
         Input_Layer = Input(
             (
-                self._metadata['split_count'],
+                self._metadata['split_count'] - 1,
                 self._metadata['data_shape'][0],
                 self._metadata['data_shape'][1],
             )

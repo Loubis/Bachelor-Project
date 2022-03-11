@@ -15,11 +15,11 @@ class LibrosaCPUSTFT():
 
 
     def _to_mono(self, waveform):
-        return lr.to_mono(
-            waveform.reshape( 
-                (waveform.shape[1], waveform.shape[0]) 
+        if waveform.shape[0] != 2:
+            waveform = waveform.reshape( 
+                (waveform.shape[1], waveform.shape[0])
             )
-        )
+        return lr.to_mono(waveform)
 
 
     def _stft_librosa(self, waveform):
