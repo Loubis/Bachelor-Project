@@ -25,6 +25,7 @@ from tensorflow.keras.layers import (
     Input,
     Conv2D,
     MaxPool2D,
+    Permute,
     Bidirectional,
     GRU,
     Flatten,
@@ -35,7 +36,7 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 
 def transoform_data(x):
-    return np.array(list(x.values()))[:, : ,0:-1]
+    return np.array(list(x.values()))
 
 class DropOriginalMultiChannelParallelCRNN(AbstractModel):
 
@@ -176,7 +177,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
     def _create_cnn_block(self, Input_Layer):
         CNN_Block = tf.keras.layers.Reshape((
             self._metadata['data_shape'][0],
-            self._metadata['data_shape'][1] - 1,
+            self._metadata['data_shape'][1],
             self._metadata['split_count'] - 1,
         ))(Input_Layer)
 
@@ -239,6 +240,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
         BiRNN_Block = TimeDistributed(Lambda(lambda x: tf.expand_dims(x, -1)))(Input_Layer)
         BiRNN_Block = TimeDistributed(MaxPool2D(pool_size=(1, 4), strides=(1, 4)))(BiRNN_Block)
         BiRNN_Block = Lambda(lambda x: tf.keras.backend.squeeze(x, axis=-1))(BiRNN_Block)
+        BiRNN_Block = TimeDistributed(Permute((2, 1)))(BiRNN_Block)
         BiRNN_Block = TimeDistributed(Bidirectional(GRU(128)))(BiRNN_Block)
         BiRNN_Block = Dropout(0.5)(BiRNN_Block)
 
@@ -252,7 +254,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
             (
                 self._metadata['split_count'] - 1,
                 self._metadata['data_shape'][0],
-                self._metadata['data_shape'][1] - 1,
+                self._metadata['data_shape'][1],
             )
         )
 
@@ -260,7 +262,7 @@ class DropOriginalMultiChannelParallelCRNN(AbstractModel):
             self._create_cnn_block(Input_Layer),
             self._create_birnn_block(Input_Layer),
         ], axis=-1)
-        Final_Classification_Block = Dropout(0.5)(Final_Classification_Block)
+        Final_Classification_Block = Dropout(0.5)(self._create_cnn_block(Input_Layer))
         Output_Layer = Dense(self._metadata['label_count'], activation='softmax')(
             Final_Classification_Block
         )
