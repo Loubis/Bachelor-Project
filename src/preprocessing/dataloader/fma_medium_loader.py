@@ -43,7 +43,7 @@ class FmaMediumLoader(AbstractDatasetLoader):
         # Filter small + medium data sub set
         df = df[df[("set", "subset")].isin(["small","medium"])]
         # Filter malformed songs
-        df[~df.index.isin(excluded_shorter_tracks)]
+        df = df[~df.index.isin(excluded_shorter_tracks)]
 
         genres_dict = {}
         genres = df[("track", "genre_top")].dropna().unique()

@@ -6,4 +6,4 @@ RUN pip install --upgrade pip
 
 RUN pip install -U ipykernel
 
-RUN pip install soundfile IPython spleeter tqdm pydot 
+RUN pip install soundfile IPython spleeter sklearn scikit-image tqdm pydot 
